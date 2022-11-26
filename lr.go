@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-const n int = 4
+const n int = 10
 
 func main() {
 	a := []float64{}
@@ -14,14 +14,12 @@ func main() {
 	for i := 1; i < n-1; i++ {
 		b = append(b, 1)
 	}
-	c := []float64{}
-	c = append(c, 1)
+	c := []float64{1}
 	for i := 1; i < n-1; i++ {
 		c = append(c, 2.0-5.0/(float64(n-1)*float64(n-1)))
 	}
 	c = append(c, 1)
-	f := []float64{}
-	f = append(f, 5)
+	f := []float64{5}
 	for i := 1; i < n-1; i++ {
 		f = append(f, 0)
 	}
@@ -31,18 +29,22 @@ func main() {
 	//fmt.Println("alfa = ", alf)
 	bet := beta(a, c, alf, f)
 	//fmt.Println("beta = ", bet)
-	x1 := solve_ab(f, alf, bet, a, c)
+	x2 := solve_ab(f, alf, bet, a, c)
 
-	//psi := psi(a, c, b)
+	psi := psi(a, c, b)
 	//fmt.Println("psi = ", psi)
-	//eta := eta(b, c, psi, f)
+	eta := eta(b, c, psi, f)
 	//fmt.Println("eta = ", eta)
-	//x2 := solve_pe(f, psi, eta, b, c)
+	x1 := solve_pe(f, psi, eta, b, c)
 
+	x := []float64{}
+	x = append(x, x1[:]...)
+	x = append(x, x2[:]...)
 	/*acc := accuracy(a, b, c, f, x1)
 	fmt.Println("accurace = ", acc)*/
-	fmt.Println("x1 = ", x1)
-	//fmt.Println("x2 = ", x2)
+	/*fmt.Println("x1 = ", x1)
+	fmt.Println("x2 = ", x2)*/
+	fmt.Println("x = ", x)
 }
 
 func alfa(a []float64, c []float64, b []float64) []float64 {
@@ -63,16 +65,17 @@ func beta(a []float64, c []float64, alf []float64, f []float64) []float64 {
 	return ret
 }
 
-func solve_ab(f []float64, alf []float64, beta []float64, a []float64, c []float64) [n]float64 {
-	ret := [n]float64{}
-	ret[n-1] = (f[n-1] - a[n-2]*beta[n-2]) / (a[n-2]*alf[n-2] + c[n-1])
-	for i := n - 2; i >= 0; i-- {
-		ret[i] = alf[i]*ret[i+1] + beta[i]
+func solve_ab(f []float64, alf []float64, beta []float64, a []float64, c []float64) [n / 2]float64 {
+	ret := [n / 2]float64{}
+	ln := n / 2
+	ret[ln-1] = (f[n-1] - a[n-2]*beta[n-2]) / (a[n-2]*alf[n-2] + c[n-1])
+	for i := n - 2; i >= ln; i-- {
+		ret[i-ln] = alf[i]*ret[i-ln+1] + beta[i]
 	}
 	return ret
 }
 
-func psi(a [n - 1]float64, c [n]float64, b [n - 1]float64) [n - 1]float64 {
+func psi(a []float64, c []float64, b []float64) [n - 1]float64 {
 	ret := [n - 1]float64{}
 	ret[n-2] = -a[n-2] / c[n-1]
 	for i := n - 3; i >= 0; i-- {
@@ -81,7 +84,7 @@ func psi(a [n - 1]float64, c [n]float64, b [n - 1]float64) [n - 1]float64 {
 	return ret
 }
 
-func eta(b [n - 1]float64, c [n]float64, psi [n - 1]float64, f [n]float64) [n - 1]float64 {
+func eta(b []float64, c []float64, psi [n - 1]float64, f []float64) [n - 1]float64 {
 	ret := [n - 1]float64{}
 	ret[n-2] = f[n-1] / c[n-1]
 	for i := n - 3; i >= 0; i-- {
@@ -90,16 +93,17 @@ func eta(b [n - 1]float64, c [n]float64, psi [n - 1]float64, f [n]float64) [n - 
 	return ret
 }
 
-func solve_pe(f [n]float64, psi [n - 1]float64, eta [n - 1]float64, b [n - 1]float64, c [n]float64) [n]float64 {
-	ret := [n]float64{}
+func solve_pe(f []float64, psi [n - 1]float64, eta [n - 1]float64, b []float64, c []float64) [n / 2]float64 {
+	ret := [n / 2]float64{}
+	ln := n / 2
 	ret[0] = (f[0] - b[0]*eta[0]) / (b[0]*psi[0] + c[0])
-	for i := 1; i <= n-1; i++ {
+	for i := 1; i <= ln-1; i++ {
 		ret[i] = psi[i-1]*ret[i-1] + eta[i-1]
 	}
 	return ret
 }
 
-func accuracy(a [n - 1]float64, b [n - 1]float64, c [n]float64, f [n]float64, x [n]float64) [n]float64 {
+func accuracy(a []float64, b []float64, c []float64, f []float64, x [n]float64) [n]float64 {
 	ret := [n]float64{}
 	ret[0] = c[0]*x[0] + b[0]*x[1] - f[0]
 	for i := 1; i < n-2; i++ {

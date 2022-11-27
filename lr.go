@@ -1,8 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
-const n int = 4
+const n int = 8192
 
 func main() {
 	a := []float64{}
@@ -24,6 +27,8 @@ func main() {
 		f = append(f, 0)
 	}
 	f = append(f, -1)
+
+	t1 := time.Now()
 
 	out1 := make(chan []float64)
 	out2 := make(chan [n - 1]float64)
@@ -60,7 +65,10 @@ func main() {
 	x := []float64{}
 	x = append(x, x1[:]...)
 	x = append(x, x2[:]...)
-	acc := accuracy(a, b, c, f, x)
+
+	t2 := time.Since(t1)
+	fmt.Println(t2)
+	_, acc := accuracy(a, b, c, f, x)
 	fmt.Println("accurace = ", acc)
 	fmt.Println("x = ", x)
 
@@ -142,12 +150,16 @@ func solve_pe(f []float64, psi [n - 1]float64, eta [n - 1]float64, b []float64, 
 	return ret
 }
 
-func accuracy(a []float64, b []float64, c []float64, f []float64, x []float64) [n]float64 {
+func accuracy(a []float64, b []float64, c []float64, f []float64, x []float64) ([n]float64, float64) {
 	ret := [n]float64{}
 	ret[0] = c[0]*x[0] + b[0]*x[1] - f[0]
+	max_acc := ret[0]
 	for i := 1; i < n-2; i++ {
 		ret[i] = a[i-1]*x[i-1] + c[i]*x[i] + b[i]*x[i+1] - f[i]
+		if ret[i] > max_acc {
+			max_acc = ret[i]
+		}
 	}
 	ret[n-1] = a[n-2]*x[n-2] + c[n-1]*x[n-1] - f[n-1]
-	return ret
+	return ret, max_acc
 }

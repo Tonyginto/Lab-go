@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 
-const n int = 10
+const n int = 4
 
 func main() {
 	a := []float64{}
@@ -25,26 +25,65 @@ func main() {
 	}
 	f = append(f, -1)
 
-	alf := alfa(a, c, b)
-	//fmt.Println("alfa = ", alf)
-	bet := beta(a, c, alf, f)
-	//fmt.Println("beta = ", bet)
-	x2 := solve_ab(f, alf, bet, a, c)
+	out1 := make(chan []float64)
+	out2 := make(chan [n - 1]float64)
+	go func() {
+		out1 <- alfa(a, c, b)
+	}()
+	go func() {
+		out2 <- psi(a, c, b)
+	}()
+	alf := <-out1
+	psi := <-out2
 
-	psi := psi(a, c, b)
-	//fmt.Println("psi = ", psi)
-	eta := eta(b, c, psi, f)
-	//fmt.Println("eta = ", eta)
-	x1 := solve_pe(f, psi, eta, b, c)
+	out3 := make(chan []float64)
+	out4 := make(chan [n - 1]float64)
+	go func() {
+		out3 <- beta(a, c, alf, f)
+	}()
+	go func() {
+		out4 <- eta(b, c, psi, f)
+	}()
+	bet := <-out3
+	eta := <-out4
 
+	out5 := make(chan [n / 2]float64)
+	out6 := make(chan [n / 2]float64)
+	go func() {
+		out5 <- solve_ab(f, alf, bet, a, c)
+	}()
+	go func() {
+		out6 <- solve_pe(f, psi, eta, b, c)
+	}()
+	x1 := <-out6
+	x2 := <-out5
 	x := []float64{}
 	x = append(x, x1[:]...)
 	x = append(x, x2[:]...)
-	/*acc := accuracy(a, b, c, f, x1)
-	fmt.Println("accurace = ", acc)*/
-	/*fmt.Println("x1 = ", x1)
-	fmt.Println("x2 = ", x2)*/
+	acc := accuracy(a, b, c, f, x)
+	fmt.Println("accurace = ", acc)
 	fmt.Println("x = ", x)
+
+	/*alf := alfa(a, c, b)
+	//fmt.Println("alfa = ", alf)
+	bet := beta(a, c, alf, f)
+	//fmt.Println("beta = ", bet)
+	x2 := solve_ab(f, alf, bet, a, c)*/
+
+	/*psi := psi(a, c, b)
+	//fmt.Println("psi = ", psi)
+	eta := eta(b, c, psi, f)
+	//fmt.Println("eta = ", eta)
+	x1 := solve_pe(f, psi, eta, b, c)*/
+
+	/*x := []float64{}
+	x = append(x, x1[:]...)
+	x = append(x, x2[:]...)
+	acc := accuracy(a, b, c, f, x)
+	fmt.Println("accurace = ", acc)
+	fmt.Println("x1 = ", x1)
+	fmt.Println("x2 = ", x2)
+	fmt.Println("x = ", x)*/
 }
 
 func alfa(a []float64, c []float64, b []float64) []float64 {
@@ -103,7 +142,7 @@ func solve_pe(f []float64, psi [n - 1]float64, eta [n - 1]float64, b []float64, 
 	return ret
 }
 
-func accuracy(a []float64, b []float64, c []float64, f []float64, x [n]float64) [n]float64 {
+func accuracy(a []float64, b []float64, c []float64, f []float64, x []float64) [n]float64 {
 	ret := [n]float64{}
 	ret[0] = c[0]*x[0] + b[0]*x[1] - f[0]
 	for i := 1; i < n-2; i++ {

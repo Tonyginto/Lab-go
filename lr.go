@@ -2,66 +2,110 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
-const n int = 8192
+const n int = 20000000
 
 func main() {
 	a := []float64{}
-	for i := 0; i < n-2; i++ {
-		a = append(a, 1)
-	}
-	a = append(a, 0)
+	var wg0 sync.WaitGroup
+	wg0.Add(1)
+	go func() {
+		defer wg0.Done()
+		for i := 0; i < n-2; i++ {
+			a = append(a, 1)
+		}
+		a = append(a, 0)
+	}()
+	wg0.Add(1)
 	b := []float64{0}
-	for i := 1; i < n-1; i++ {
-		b = append(b, 1)
-	}
+	go func() {
+		defer wg0.Done()
+		for i := 1; i < n-1; i++ {
+			b = append(b, 1)
+		}
+	}()
+	wg0.Add(1)
 	c := []float64{1}
-	for i := 1; i < n-1; i++ {
-		c = append(c, 2.0-5.0/(float64(n-1)*float64(n-1)))
-	}
-	c = append(c, 1)
+	go func() {
+		wg0.Done()
+		for i := 1; i < n-1; i++ {
+			c = append(c, 2.0-5.0/(float64(n-1)*float64(n-1)))
+		}
+		c = append(c, 1)
+	}()
+	wg0.Add(1)
 	f := []float64{5}
-	for i := 1; i < n-1; i++ {
-		f = append(f, 0)
-	}
-	f = append(f, -1)
+	go func() {
+		defer wg0.Done()
+		for i := 1; i < n-1; i++ {
+			f = append(f, 0)
+		}
+		f = append(f, -1)
+	}()
+	wg0.Wait()
 
 	t1 := time.Now()
 
-	out1 := make(chan []float64)
-	out2 := make(chan [n - 1]float64)
-	go func() {
-		out1 <- alfa(a, c, b)
-	}()
-	go func() {
-		out2 <- psi(a, c, b)
-	}()
-	alf := <-out1
-	psi := <-out2
+	alf := []float64{}
+	ps := [n - 1]float64{}
 
-	out3 := make(chan []float64)
-	out4 := make(chan [n - 1]float64)
-	go func() {
-		out3 <- beta(a, c, alf, f)
-	}()
-	go func() {
-		out4 <- eta(b, c, psi, f)
-	}()
-	bet := <-out3
-	eta := <-out4
+	a1 := make([]float64, len(a))
+	copy(a1, a)
+	c1 := make([]float64, len(c))
+	copy(c1, c)
+	b1 := make([]float64, len(b))
+	copy(b1, b)
+	f1 := make([]float64, len(f))
+	copy(f1, f)
 
-	out5 := make(chan [n / 2]float64)
-	out6 := make(chan [n / 2]float64)
+	var wg sync.WaitGroup
+	wg.Add(1)
 	go func() {
-		out5 <- solve_ab(f, alf, bet, a, c)
+		defer wg.Done()
+		alf = alfa(a, c, b)
 	}()
+	wg.Add(1)
 	go func() {
-		out6 <- solve_pe(f, psi, eta, b, c)
+		defer wg.Done()
+		ps = psi(a1, c1, b1)
 	}()
-	x1 := <-out6
-	x2 := <-out5
+	wg.Wait()
+
+	bet := []float64{}
+	et := [n - 1]float64{}
+
+	var wg1 sync.WaitGroup
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		bet = beta(a, c, alf, f)
+	}()
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		et = eta(b, c1, ps, f1)
+	}()
+	wg1.Wait()
+
+	x1 := [n / 2]float64{}
+	x2 := [n / 2]float64{}
+
+	var wg2 sync.WaitGroup
+	wg2.Add(1)
+	go func() {
+		defer wg2.Done()
+		x2 = solve_ab(f, alf, bet, a, c)
+	}()
+	wg2.Add(1)
+	go func() {
+		defer wg2.Done()
+		x1 = solve_pe(f1, ps, et, b, c1)
+	}()
+	wg2.Wait()
+
 	x := []float64{}
 	x = append(x, x1[:]...)
 	x = append(x, x2[:]...)
@@ -69,32 +113,10 @@ func main() {
 	t2 := time.Since(t1)
 	fmt.Println(t2)
 	_, acc := accuracy(a, b, c, f, x)
-	fmt.Println("accurace = ", acc)
-	fmt.Println("x = ", x)
-
-	/*alf := alfa(a, c, b)
-	//fmt.Println("alfa = ", alf)
-	bet := beta(a, c, alf, f)
-	//fmt.Println("beta = ", bet)
-	x2 := solve_ab(f, alf, bet, a, c)*/
-
-	/*psi := psi(a, c, b)
-	//fmt.Println("psi = ", psi)
-	eta := eta(b, c, psi, f)
-	//fmt.Println("eta = ", eta)
-	x1 := solve_pe(f, psi, eta, b, c)*/
-
-	/*x := []float64{}
-	x = append(x, x1[:]...)
-	x = append(x, x2[:]...)
-	acc := accuracy(a, b, c, f, x)
-	fmt.Println("accurace = ", acc)
-	fmt.Println("x1 = ", x1)
-	fmt.Println("x2 = ", x2)
-	fmt.Println("x = ", x)*/
+	fmt.Println(acc)
 }
 
-func alfa(a []float64, c []float64, b []float64) []float64 {
+func alfa(a, c, b []float64) []float64 {
 	ret := []float64{}
 	ret = append(ret, -b[0]/c[0])
 	for i := 1; i < n-1; i++ {
@@ -103,7 +125,7 @@ func alfa(a []float64, c []float64, b []float64) []float64 {
 	return ret
 }
 
-func beta(a []float64, c []float64, alf []float64, f []float64) []float64 {
+func beta(a, c, alf, f []float64) []float64 {
 	ret := []float64{}
 	ret = append(ret, f[0]/c[0])
 	for i := 1; i < n-1; i++ {
@@ -122,7 +144,7 @@ func solve_ab(f []float64, alf []float64, beta []float64, a []float64, c []float
 	return ret
 }
 
-func psi(a []float64, c []float64, b []float64) [n - 1]float64 {
+func psi(a, c, b []float64) [n - 1]float64 {
 	ret := [n - 1]float64{}
 	ret[n-2] = -a[n-2] / c[n-1]
 	for i := n - 3; i >= 0; i-- {
@@ -150,7 +172,7 @@ func solve_pe(f []float64, psi [n - 1]float64, eta [n - 1]float64, b []float64, 
 	return ret
 }
 
-func accuracy(a []float64, b []float64, c []float64, f []float64, x []float64) ([n]float64, float64) {
+func accuracy(a, b, c, f []float64, x []float64) ([n]float64, float64) {
 	ret := [n]float64{}
 	ret[0] = c[0]*x[0] + b[0]*x[1] - f[0]
 	max_acc := ret[0]
